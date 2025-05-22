@@ -1,0 +1,294 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ντετέκτιβ της Αρκτικής: Το Μυστικό των Πάγων</title>
+  <style>
+    body {
+      font-family: "Comic Sans MS", sans-serif;
+      background-color: #d6eaff;
+      color: #1a2b4d;
+      margin: 0;
+      padding: 20px;
+    }
+    #game {
+      background-color: #f0f8ff;
+      max-width: 800px;
+      margin: auto;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 15px #4682b4;
+    }
+    .question {
+      margin-bottom: 20px;
+    }
+    .answers button {
+      display: block;
+      margin: 10px 0;
+      padding: 10px;
+      width: 100%;
+      border-radius: 6px;
+      border: 1px solid #4682b4;
+      background-color: #b0c4de;
+      color: #1a2b4d;
+      cursor: pointer;
+    }
+    .answers button:hover {
+      background-color: #87ceeb;
+    }
+    #navigation {
+      margin-top: 20px;
+      display: flex;
+      justify-content: space-between;
+    }
+    #feedback, #aiAdvice {
+      margin-top: 10px;
+      font-weight: bold;
+    }
+    #aiAdvice {
+      color: #191970;
+      background-color: #e6f0ff;
+      padding: 10px;
+      border-radius: 5px;
+    }
+    #result {
+      font-size: 1.2em;
+      font-weight: bold;
+      text-align: center;
+      margin-top: 20px;
+      color: #191970;
+    }
+  </style>
+</head>
+<body>
+<div id="game">
+  <h1>Ντετέκτιβ της Αρκτικής: Το Μυστικό των Πάγων</h1>
+  <p id="intro">Ο παγωμένος άνεμος της Αρκτικής κρύβει σκοτεινά μυστικά, Ντετέκτιβ. Οι πολικοί πάγοι λιώνουν, απειλώντας τον πλανήτη. Οι "Φύλακες του Ψύχους" οργανώνουν μια συνωμοσία που επιταχύνει την καταστροφή. Οι ύποπτοι είναι:
+    <ul>
+      <li><strong>ArcticOil:</strong> Εταιρεία πετρελαίου με γεωτρήσεις στην Αρκτική.</li>
+      <li><strong>IceFreight:</strong> Ναυτιλιακή εταιρεία που εκμεταλλεύεται νέες διαδρομές.</li>
+      <li><strong>Dr. Frost:</strong> Επιστήμονας που δημοσιεύει αμφιλεγόμενες μελέτες.</li>
+      <li><strong>PolarSect:</strong> Απομονωμένη κοινότητα με παράξενες πεποιθήσεις.</li>
+    </ul>
+  Είμαι ο Grok, ο AI Παρατηρητής της Αρκτικής. Τα στοιχεία είναι διφορούμενα, και ο χρόνος λιώνει. Ξεκίνα την έρευνα!</p>
+
+  <div id="questionContainer"></div>
+  <div id="feedback"></div>
+  <div id="aiAdvice"></div>
+  <div id="navigation">
+    <button onclick="prevQuestion()">Προηγούμενη</button>
+    <button onclick="nextQuestion()">Επόμενη</button>
+  </div>
+  <div id="finalGuess" style="display:none;">
+    <h2>Ποιος κρύβεται πίσω από τους Φύλακες του Ψύχους;</h2>
+    <div class="answers" id="finalChoices"></div>
+    <div id="finalFeedback"></div>
+  </div>
+  <div id="result"></div>
+</div>
+<script>
+const suspects = ["ArcticOil", "IceFreight", "Dr. Frost", "PolarSect"];
+let currentQuestion = 0;
+let score = 0;
+const correctSuspect = "ArcticOil";
+const answersLog = [];
+
+const questions = [
+  {
+    text: "Ένα κωδικοποιημένο μήνυμα αναφέρει 'Ενέργεια από τα βάθη'. Ποια δραστηριότητα μπορεί να συνδέεται;",
+    options: shuffle([
+      "Γεωτρήσεις πετρελαίου στην Αρκτική",
+      "Ναυτιλιακές διαδρομές μέσω λιωμένων πάγων",
+      "Έρευνα για γεωθερμική ενέργεια",
+      "Τελετές της PolarSect για 'ενέργεια της γης'"
+    ]),
+    correct: "Γεωτρήσεις πετρελαίου στην Αρκτική",
+    aiAdvice: "Grok: Το μήνυμα είναι ασαφές. Η 'ενέργεια από τα βάθη' μπορεί να υποδηλώνει πετρέλαιο, αλλά η γεωθερμία ή οι τελετές της PolarSect δεν αποκλείονται. Εστίασε σε δραστηριότητες με μεγάλο περιβαλλοντικό αντίκτυπο."
+  },
+  {
+    text: "Οι πολικές αρκούδες μειώνονται λόγω απώλειας βιότοπου. Τι συνεισφέρει περισσότερο στην τήξη των πάγων;",
+    options: shuffle([
+      "Αυξημένες εκπομπές CO2 από καύση καυσίμων",
+      "Αλλαγές στις θαλάσσιες ροές λόγω ναυτιλίας",
+      "Φυσικές κλιματικές διακυμάνσεις",
+      "Ατμοσφαιρική ρύπανση από τοπικές τελετές"
+    ]),
+    correct: "Αυξημένες εκπομπές CO2 από καύση καυσίμων",
+    aiAdvice: "Grok: Η τήξη των πάγων συνδέεται με τη θέρμανση, αλλά οι φυσικές διακυμάνσεις ή η ναυτιλία μπορεί να παίζουν ρόλο. Ζύγισε ποιο έχει τη μεγαλύτερη παγκόσμια επίδραση."
+  },
+  {
+    text: "Βρίσκεις απόρρητα έγγραφα για χρηματοδότηση 'Project Icebreaker'. Τι μπορεί να είναι;",
+    options: shuffle([
+      "Πρόγραμμα γεωτρήσεων της ArcticOil",
+      "Ναυτιλιακό σχέδιο της IceFreight",
+      "Επιστημονική μελέτη του Dr. Frost",
+      "Μυστικό σχέδιο της PolarSect"
+    ]),
+    correct: "Πρόγραμμα γεωτρήσεων της ArcticOil",
+    aiAdvice: "Grok: Το 'Icebreaker' μπορεί να αναφέρεται σε φυσική ή μεταφορική διάρρηξη πάγων. Όλοι οι ύποπτοι έχουν κίνητρα. Ψάξε για το πιο καταστροφικό σχέδιο."
+  },
+  {
+    text: "Αναφορές δείχνουν αυξημένα επίπεδα μεθανίου στην Αρκτική. Τι μπορεί να το προκαλεί;",
+    options: shuffle([
+      "Απελευθέρωση από γεωτρήσεις πετρελαίου",
+      "Φυσική απόψυξη του permafrost",
+      "Εκπομπές από ναυτιλιακές μηχανές",
+      "Καύση υλικών σε τελετές της PolarSect"
+    ]),
+    correct: "Απελευθέρωση από γεωτρήσεις πετρελαίου",
+    aiAdvice: "Grok: Το μεθάνιο είναι ισχυρό αέριο του θερμοκηπίου. Οι γεωτρήσεις το απελευθερώνουν, αλλά το permafrost ή η ναυτιλία μπορεί να συνεισφέρουν. Σκέψου ποιος ελέγχει μεγάλες εκπομπές."
+  },
+  {
+    text: "Ένα σήμα αναφέρει 'νέοι δρόμοι ανοίγουν'. Ποια δραστηριότητα συνδέεται;",
+    options: shuffle([
+      "Ναυτιλιακές διαδρομές λόγω τήξης πάγων",
+      "Επέκταση γεωτρήσεων σε νέες περιοχές",
+      "Εξερεύνηση από την PolarSect",
+      "Δημιουργία νέων ερευνητικών σταθμών"
+    ]),
+    correct: "Επέκταση γεωτρήσεων σε νέες περιοχές",
+    aiAdvice: "Grok: Οι 'νέοι δρόμοι' μπορεί να είναι κυριολεκτικοί ή μεταφορικοί. Η ναυτιλία επωφελείται από τη τήξη, αλλά οι γεωτρήσεις ανοίγουν νέες ζώνες. Εστίασε στην κλιματική επίδραση."
+  },
+  {
+    text: "Βρίσκεις στοιχεία για παραπληροφόρηση σχετικά με την τήξη. Ποιος μπορεί να εμπλέκεται;",
+    options: shuffle([
+      "Dr. Frost με αμφιλεγόμενες δημοσιεύσεις",
+      "ArcticOil για απόκρυψη εκπομπών",
+      "IceFreight για απόκρυψη επιπτώσεων",
+      "PolarSect με προπαγάνδα"
+    ]),
+    correct: "ArcticOil για απόκρυψη εκπομπών",
+    aiAdvice: "Grok: Η παραπληροφόρηση εξυπηρετεί όσους κερδίζουν από την κρίση. Ο Dr. Frost είναι προφανής, αλλά οι εταιρείες έχουν μεγαλύτερα κίνητρα. Ελέγξτε τα κεφάλαια."
+  },
+  {
+    text: "Η στάθμη της θάλασσας ανεβαίνει. Τι συνεισφέρει περισσότερο από την Αρκτική;",
+    options: shuffle([
+      "Τήξη πάγων λόγω εκπομπών CO2",
+      "Αλλαγές στις θαλάσσιες ροές",
+      "Αύξηση βροχοπτώσεων από τελετές",
+      "Φυσικές γεωλογικές αλλαγές"
+    ]),
+    correct: "Τήξη πάγων λόγω εκπομπών CO2",
+    aiAdvice: "Grok: Η τήξη των πάγων ανεβάζει τη στάθμη, αλλά οι ροές ή οι φυσικές αλλαγές μπορεί να παίζουν ρόλο. Ποιος επιδεινώνει τη θέρμανση πιο πολύ;"
+  }
+];
+
+function shuffle(array) {
+  return [...array].sort(() => Math.random() - 0.5);
+}
+
+function showQuestion() {
+  const container = document.getElementById("questionContainer");
+  const q = questions[currentQuestion];
+  let html = `<div class="question"><h3>Υπόθεση ${currentQuestion + 1}</h3><p>${q.text}</p><div class="answers">`;
+  q.options.forEach(opt => {
+    html += `<button onclick="checkAnswer('${opt.replace(/'/g, "\\'")}')">${opt}</button>`;
+  });
+  html += `</div></div>`;
+  container.innerHTML = html;
+  document.getElementById("feedback").innerText = "";
+  document.getElementById("aiAdvice").innerText = "";
+  document.getElementById("finalGuess").style.display = "none";
+  document.getElementById("result").innerText = "";
+}
+
+function checkAnswer(selected) {
+  const correct = questions[currentQuestion].correct;
+  const feedback = document.getElementById("feedback");
+  const aiAdvice = document.getElementById("aiAdvice");
+  if (selected === correct) {
+    answersLog[currentQuestion] = true;
+    feedback.innerText = "Σωστά! Ξετυλίγεις το μυστήριο των Φυλάκων!";
+    score++;
+    aiAdvice.innerText = questions[currentQuestion].aiAdvice + " Συνέχισε, Ντετέκτιβ, η αλήθεια κρύβεται στον πάγο!";
+  } else {
+    answersLog[currentQuestion] = false;
+    feedback.innerText = "Λάθος! Οι Φύλακες σε ξεγέλασαν. Δοκίμασε ξανά.";
+    aiAdvice.innerText = questions[currentQuestion].aiAdvice + " Ξανασκέψου τα στοιχεία με κριτική ματιά.";
+  }
+}
+
+function nextQuestion() {
+  if (currentQuestion < questions.length - 1) {
+    currentQuestion++;
+    showQuestion();
+  } else {
+    showFinalGuess();
+  }
+}
+
+function prevQuestion() {
+  if (currentQuestion > 0) {
+    currentQuestion--;
+    showQuestion();
+  }
+}
+
+function showFinalGuess() {
+  document.getElementById("questionContainer").innerHTML = "";
+  document.getElementById("finalGuess").style.display = "block";
+  const container = document.getElementById("finalChoices");
+  container.innerHTML = "";
+  suspects.forEach(s => {
+    container.innerHTML += `<button onclick="makeFinalGuess('${s}')">${s}</button>`;
+  });
+  document.getElementById("aiAdvice").innerText = "Grok: Τα στοιχεία είναι μπροστά σου, Ντετέκτιβ. Η ArcticOil φαίνεται ύποπτη, αλλά όλοι έχουν κίνητρα. Ζύγισε τις αποδείξεις: ποιος έχει τη μεγαλύτερη δύναμη να λιώνει τους πάγους;";
+}
+
+function makeFinalGuess(suspect) {
+  const feedback = document.getElementById("finalFeedback");
+  const aiAdvice = document.getElementById("aiAdvice");
+  if (suspect === correctSuspect) {
+    feedback.innerText = "Μπράβο! Ξεσκέπασες τους Φύλακες του Ψύχους! Η ArcticOil λιώνει τους πάγους με παράνομες γεωτρήσεις. Η Αρκτική σε ευγνωμονεί!";
+    document.getElementById("result").innerText = "🧊 Συγχαρητήρια, Ντετέκτιβ της Αρκτικής! ❄️";
+    aiAdvice.innerText = "Grok: Η νίκη σου προστατεύει την Αρκτική! Οι πάγοι αντανακλούν το 80% της ηλιακής ακτινοβολίας, δροσίζοντας τον πλανήτη. Υποστήριξε την καθαρή ενέργεια για να σταματήσεις την κρίση!";
+  } else {
+    feedback.innerText = "Λάθος! Οι Φύλακες σε παρέσυραν. Ο ένοχος παραμένει κρυμμένος.";
+    aiAdvice.innerText = "Grok: Επανεξέτασε τα στοιχεία για εκπομπές και κρυφές δράσεις. Ποιος επηρεάζει περισσότερο το κλίμα της Αρκτικής;";
+  }
+}
+
+showQuestion();
+</script>
+</body>
+</html>
